@@ -13,18 +13,25 @@ import Photos
 
 enum PHPPhotoLibrarySaveStatus {
     case authorizationFail
-    case authorizationCancel
+    case cancel
     case success(PHAsset)
     case fail
 }
 
+enum PHPRequestAuthorizationStatus {
+    case cancel
+    case fail
+    case success
+}
+
 extension PHPhotoLibrary {
-    class func syncRequestAuthorization() -> Bool {
+    
+    class func syncRequestAuthorization() -> PHPRequestAuthorizationStatus {
         switch PHPhotoLibrary.authorizationStatus() {
         case .authorized:
-            return true
+            return .success
         case .denied, .restricted:
-            return false
+            return .fail
         case .notDetermined:
             break
         @unknown default:
@@ -41,9 +48,9 @@ extension PHPhotoLibrary {
         
         switch PHPhotoLibrary.authorizationStatus() {
         case .authorized:
-            return true
+            return .success
         case .denied, .restricted, .notDetermined:
-            return false
+            return .cancel
         @unknown default:
             fatalError()
         }
@@ -51,8 +58,15 @@ extension PHPhotoLibrary {
     
     func saveAlbum(name albumName: String, image: UIImage, completion: @escaping (PHPPhotoLibrarySaveStatus) -> Void) {
         let authorizationStatus = PHPhotoLibrary.syncRequestAuthorization()
-        guard authorizationStatus else {
-            completion(.authorizationFail)
+        guard authorizationStatus == .success else {
+            switch authorizationStatus {
+            case .fail:
+                completion(.authorizationFail)
+            case .cancel:
+                completion(.cancel)
+            default:
+                break
+            }
             return
         }
         
